@@ -1,0 +1,46 @@
+---
+dist: trusty
+before_install:
+  - sudo add-apt-repository --yes ppa:js-reynaud/kicad-4
+  - sudo add-apt-repository --yes ppa:saiarcot895/myppa #apt-fast
+  - sudo apt-get update -qq
+install:
+  - sudo apt-get install -y apt-fast
+  - sudo apt-fast install -y kicad git imagemagick curl #This will take a while
+  # - sudo apt-get install -y gerbv pcb
+before_script:
+  # Download plot script from spencers gists. Intentionally hosted externally so it is consistant accross commits/builds
+  - sudo curl -s https://gist.githubusercontent.com/spuder/4a76e42f058ef7b467d9/raw -o /tmp/plot_board.py
+  - sudo chmod +x /tmp/plot_board.py
+script:
+  # If running on a non travis vm (e.g vagrant) set a BUILD_DIR so we can return home later
+  - if [[ -z "$TRAVIS_BUILD_DIR" ]]; then TRAVIS_BUILD_DIR=$PWD; fi
+
+  # Generate pdf files
+  - find . -name '*.kicad_pcb$' -type f -not -name _autosave* -exec python /tmp/plot_board.py {} /tmp/before \;
+
+  # Checkout previous commit # TODO() Make this more resiliant to multi commit tests
+  - cd $TRAVIS_BUILD_DIR && git checkout HEAD^1
+
+  # Generate pdf files
+  - find . -name '*.kicad_pcb' -type f -not -name _autosave* -exec python /tmp/plot_board.py {} /tmp/after \;
+
+  # Convert all pdf files to png
+  - find /tmp/before/ -name '*.pdf' -type f -not -name _autosave* -exec convert +antialias -negate {} {}.png \;
+  - find /tmp/after/ -name '*.pdf' -type f -not -name _autosave* -exec convert +antialias -negate {} {}.png \;
+
+  # Change newly created file extensions from .pdf.png to just .png
+  - cd /tmp/before && rename 's/\.pdf\.png/\.png/' *.pdf.png && cd $TRAVIS_BUILD_DIR
+  - cd /tmp/after && rename 's/\.pdf\.png/\.png/' *.pdf.png && cd $TRAVIS_BUILD_DIR
+
+after_success:
+  # Generate png diffs
+  # - find /tmp/before -name '*.png' -type f -not -name _autosave*  -execdir composite -stereo 0 {} /tmp/after/{} /tmp/diff/{} \;
+  # - find /tmp/before -name 'connector-AssyOutlinesTop.png' -type f -not -name _autosave*  -printf "%f\n" -exec composite -stereo 0 {} /tmp/after/{} /tmp/diff/{} \;
+  - mkdir /tmp/diff
+  - for f in /tmp/before/*.pdf; do composite -stereo 0  /tmp/before/$(basename $f) /tmp/before/$(basename $f) /tmp/diff/$(basename $f); done
+addons:
+  artifacts: true
+  s3_region: "us-west-1" #TODO() can this be dynamic?
+  paths:
+    - "/tmp/diff"

@@ -12,3 +12,6 @@ _autosave-*
 
 # MacOSX
 .DS_Store
+
+.vagrant/
+*/plot/
