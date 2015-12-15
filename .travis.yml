@@ -1,0 +1,44 @@
+---
+dist: trusty
+before_install:
+  - sudo add-apt-repository --yes ppa:js-reynaud/kicad-4
+  - sudo add-apt-repository --yes ppa:saiarcot895/myppa #apt-fast
+  - sudo apt-get update -qq
+install:
+  - sudo DEBIAN_FRONTEND=noninteractive apt-get install -y apt-fast
+  - sudo apt-fast install -y kicad git imagemagick curl #This will take a while
+  # - sudo apt-get install -y gerbv pcb
+before_script:
+  # Download plot script from spencers gists. Intentionally hosted externally so it is consistant accross commits/builds
+  - sudo curl -s https://gist.githubusercontent.com/spuder/4a76e42f058ef7b467d9/raw -o /tmp/plot_board.py
+  - sudo chmod +x /tmp/plot_board.py
+script:
+  # If running on a non travis vm (e.g vagrant) set a BUILD_DIR so we can return home later
+  - if [[ -z "$TRAVIS_BUILD_DIR" ]]; then export TRAVIS_BUILD_DIR=$PWD; fi
+
+  # Generate pdf files
+  - sudo find $TRAVIS_BUILD_DIR -name '*.kicad_pcb' -type f -not -name _autosave* -exec python /tmp/plot_board.py {} /tmp/after \;
+
+  # Checkout previous commit # TODO() Make this more resiliant to multi commit tests
+  - cd $TRAVIS_BUILD_DIR && git checkout HEAD^1
+
+  # Generate pdf files
+  - sudo find $TRAVIS_BUILD_DIR -name '*.kicad_pcb' -type f -not -name _autosave* -exec python /tmp/plot_board.py {} /tmp/before \;
+
+  # Convert all pdf files to png
+  - sudo find /tmp/before/ -name '*.pdf' -type f -not -name _autosave* -exec convert +antialias -negate {} {}.png \;
+  - sudo find /tmp/after/ -name '*.pdf' -type f -not -name _autosave* -exec convert +antialias -negate {} {}.png \;
+
+  # Change newly created file extensions from .pdf.png to just .png
+  - cd /tmp/before && sudo rename 's/\.pdf\.png/\.png/' *.pdf.png && cd $TRAVIS_BUILD_DIR
+  - cd /tmp/after && sudo rename 's/\.pdf\.png/\.png/' *.pdf.png && cd $TRAVIS_BUILD_DIR
+
+  # Generate png diffs
+  - mkdir /tmp/diff
+  - for f in /tmp/before/*.png; do sudo composite -stereo 0  /tmp/before/$(basename $f) /tmp/before/$(basename $f) /tmp/diff/$(basename $f); done
+addons:
+  artifacts:
+    paths:
+      - $(ls /tmp/diff/*.png | tr "\n" ":")
+  s3_region: "US Standard"
+
