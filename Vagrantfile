@@ -43,13 +43,10 @@ Vagrant.configure(2) do |config|
   # backing providers for Vagrant. These expose provider-specific options.
   # Example for VirtualBox:
   #
-  # config.vm.provider "virtualbox" do |vb|
-  #   # Display the VirtualBox GUI when booting the machine
-  #   vb.gui = true
-  #
-  #   # Customize the amount of memory on the VM:
-  #   vb.memory = "1024"
-  # end
+  config.vm.provider "virtualbox" do |vb|
+      vb.cpus = 2
+      vb.memory = "2048"
+  end
   #
   # View the documentation for the provider you are using for more
   # information on available options.
@@ -64,11 +61,8 @@ Vagrant.configure(2) do |config|
   # Enable provisioning with a shell script. Additional provisioners such as
   # Puppet, Chef, Ansible, Salt, and Docker are also available. Please see the
   # documentation for more information about their specific syntax and use.
-  # config.vm.provision "shell", inline <<-SHELL
-  #   sudo add-apt-repository --yes ppa:js-reynaud/kicad-4
-  #   sudo add-apt-repository --yes ppa:saiarcot895/myppa #apt-fast
-  #   sudo apt-get update -qq
-  #   sudo apt-get install -y apt-fast
-  #   sudo apt-fast install -y kicad git
-  # SHELL
+  # config.vm.provision "shell",
+  #   inline: "sed -i 's/^mesg n$/tty -s \\&\\& mesg n/g' /root/.profile",
+  #   inline: "/bin/bash /vagrant/scripts/1-add-repos.sh",
+  #   inline: "/bin/bash /vagrant/scripts/2-install-dependencies.sh"
 end

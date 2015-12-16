@@ -9,9 +9,9 @@ gerbers
 *-bak
 _autosave-*
 *.swp
-
-# MacOSX
+node_modules
+bom.csv
 .DS_Store
 
 .vagrant/
-*/plot/
+plot/

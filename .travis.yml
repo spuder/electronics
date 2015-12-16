@@ -1,22 +1,15 @@
 ---
 dist: trusty
+sudo: true
+language: python
+python:
+  - "2.7"
 before_install:
-  - sudo ./scripts/1-add-repos.sh
+  - ./scripts/1-add-repos.sh
 install:
-  - sudo ./scripts/2-install-dependencies.sh
+  - ./scripts/2-install-dependencies.sh
 before_script:
-  # Download plot script from spencers gists. Intentionally hosted externally so it is consistant accross commits/builds
-  - sudo ./scripts/3-download-scripts.sh
+  - export PYTHONPATH=$PYTHONPATH:"/usr/lib/python2.7/dist-packages"
+  - ./test/travis-ci/pre-flight-test.sh
 script:
-  - sudo ./scripts/4-current-pdf.sh
-  # Checkout previous commit # TODO() Make this more resiliant to multi commit tests
-  - git checkout HEAD^1
-  - sudo ./scripts/5-previous-pdf.sh
-  - sudo ./scripts/6-convert-files.sh
-  - sudo ./scripts/7-generate-diffs.sh
-
-addons:
-  artifacts:
-    paths:
-      - $(ls /tmp/diff/*.png | tr "\n" ":")
-  s3_region: "US Standard"
+  - ./scripts/generate-png-diff.sh $(git rev-parse --short HEAD^1)
